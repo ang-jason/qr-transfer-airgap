@@ -1,5 +1,5 @@
 # Airgap QR Transfer
-[![Netlify Status](https://api.netlify.com/api/v1/badges/afc5d566-e512-4952-8fc6-acc6a5555d3a/deploy-status)](https://app.netlify.com/projects/qr-air-send/deploys)<br>
+[![Netlify Status](https://api.netlify.com/api/v1/badges/afc5d566-e512-4952-8fc6-acc6a5555d3a/deploy-status)](https://qr-air-send.netlify.app/)<br>
 **Move files between two devices using only a screen and a camera. No internet. No cables. No Bluetooth.**
 
 Designed for air-gapped environments where network access is restricted or unavailable — isolated workstations, secure facilities, offline backups, or any situation where you need data to cross a physical gap without touching a wire.
