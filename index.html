@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<title>QR File Transfer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c-frost:   #F2F7F8;
+    --c-glacier: #D6EAF0;
+    --c-mint:    #BFE6DC;
+    --c-lagoon:  #4DA6B8;
+    --c-teal:    #2C7A8C;
+    --c-slate:   #25404A;
+    --bg-surface:     var(--c-frost);
+    --bg-card:        #FFFFFF;
+    --bg-secondary:   var(--c-glacier);
+    --bg-soft-accent: var(--c-mint);
+    --action-primary:   var(--c-teal);
+    --action-accent:    var(--c-lagoon);
+    --text-primary:   var(--c-slate);
+    --text-secondary: var(--c-teal);
+    --text-on-primary:#FFFFFF;
+    --border-soft:    #D6EAF0;
+    --radius:  12px;
+    --radius-sm: 8px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* Nav */
+  .nav {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-soft);
+    padding: 10px 20px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .nav-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1.5px solid var(--action-accent);
+    border-radius: var(--radius-sm);
+    padding: 8px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .nav-btn:hover { background: var(--c-glacier); }
+  .nav-btn.active {
+    background: var(--action-primary);
+    color: var(--text-on-primary);
+    border-color: var(--action-primary);
+  }
+
+  /* Layout */
+  .page { max-width: 760px; margin: 0 auto; padding: 32px 20px 48px; }
+
+  /* Hero */
+  .hero { text-align: center; margin-bottom: 32px; }
+  .hero-icon { font-size: 52px; margin-bottom: 12px; display: block; }
+  .hero h1 { font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; letter-spacing: -0.3px; }
+  .hero p { font-size: 15px; color: var(--text-secondary); max-width: 42ch; margin: 0 auto 16px; line-height: 1.65; }
+  .badges { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  .badge {
+    background: var(--bg-soft-accent);
+    color: var(--text-primary);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  @media (max-width: 520px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.15s;
+  }
+  .card:hover { box-shadow: 0 4px 20px rgba(44,122,140,0.1); }
+  .card-icon { font-size: 44px; margin-bottom: 10px; line-height: 1; }
+  .card h2 { font-size: 17px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+  .card .sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5; }
+  .feature-list { list-style: none; display: flex; flex-direction: column; gap: 8px; flex: 1; margin-bottom: 18px; }
+  .feature-list li { font-size: 13px; color: var(--text-primary); display: flex; gap: 8px; align-items: flex-start; }
+  .feature-list li::before { content: '✓'; color: var(--c-lagoon); font-weight: 700; flex-shrink: 0; }
+  .btn-primary {
+    width: 100%; background: var(--action-primary); color: var(--text-on-primary);
+    border: none; border-radius: var(--radius-sm); padding: 11px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-outline {
+    width: 100%; background: transparent; color: var(--c-teal);
+    border: 1.5px solid var(--c-lagoon); border-radius: var(--radius-sm); padding: 11px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .btn-outline:hover { background: var(--c-glacier); }
+
+  /* How it works */
+  .how {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .how h3 { font-size: 14px; font-weight: 700; margin-bottom: 14px; color: var(--text-primary); }
+  .how-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 420px) { .how-grid { grid-template-columns: 1fr; } }
+  .how-item {
+    background: var(--bg-surface);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--text-primary);
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    line-height: 1.5;
+  }
+  .how-item span { flex-shrink: 0; font-size: 16px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-btn active">🏠 Home</a>
+  <a href="/send" class="nav-btn">🛰️ Transmitter</a>
+  <a href="/receive" class="nav-btn">🪐 Receiver</a>
+</nav>
+
+<main class="page">
+
+  <div class="hero">
+    <span class="hero-icon">📡</span>
+    <h1>QR File Transfer</h1>
+    <p>Move files between two devices with just a camera. No internet, no cable, no Bluetooth.</p>
+    <div class="badges">
+      <span class="badge">🔒 100% offline</span>
+      <span class="badge">✅ missed scans fine</span>
+      <span class="badge">⚡ self-healing</span>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-icon">🛰️</div>
+      <h2>Transmitter</h2>
+      <p class="sub">Send files using infinite fountain QR codes</p>
+      <ul class="feature-list">
+        <li>No file size limit — best under 5 MB</li>
+        <li>Generates unlimited unique QR codes</li>
+        <li>Self-healing — missed scans don't matter</li>
+        <li>Real-time encoding stats</li>
+      </ul>
+      <a href="/send" class="btn-primary">Start sending 🛰️</a>
+    </div>
+    <div class="card">
+      <div class="card-icon">🪐</div>
+      <h2>Receiver</h2>
+      <p class="sub">Scan QR codes in any order to reconstruct files</p>
+      <ul class="feature-list">
+        <li>Camera-based QR scanning</li>
+        <li>Progressive decoding</li>
+        <li>Works with any subset of QR codes</li>
+        <li>Auto-download on completion</li>
+      </ul>
+      <a href="/receive" class="btn-outline">Start receiving 🪐</a>
+    </div>
+  </div>
+
+  <div class="how">
+    <h3>🎓 How Fountain Codes Work</h3>
+    <div class="how-grid">
+      <div class="how-item"><span>🔀</span>Each QR is a random XOR of file chunks</div>
+      <div class="how-item"><span>♾️</span>Sender generates infinite unique symbols</div>
+      <div class="how-item"><span>🎯</span>Receiver needs only ~105% of total chunks</div>
+      <div class="how-item"><span>✅</span>Missing or out-of-order QRs are fine</div>
+      <div class="how-item"><span>📡</span>Same tech as satellite broadcasting</div>
+      <div class="how-item"><span>🔒</span>100% offline — no data leaves your device</div>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>

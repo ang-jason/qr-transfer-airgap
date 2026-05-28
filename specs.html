@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<title>Specs · Airgap QR</title>
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --panel: #131316;
+    --ink: #f5f3ee;
+    --dim: #8a8680;
+    --accent: #d4ff3a;
+    --good: #4ade80;
+    --line: #1f1f23;
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--mono); min-height: 100vh; padding: 24px;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(212,255,58,0.06), transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(74,222,128,0.04), transparent 45%);
+  }
+  .wrap { max-width: 820px; margin: 0 auto; }
+  header { border-bottom: 1px dashed #2a2a2e; padding-bottom: 20px; margin-bottom: 28px; }
+  .kicker { font-size: 11px; letter-spacing: 0.35em; text-transform: uppercase; color: var(--dim); margin: 0 0 10px; }
+  h1 { font-size: 34px; letter-spacing: -0.03em; margin: 0; font-weight: 400; line-height: 1.05; }
+  h1 b { color: var(--accent); font-weight: 400; }
+  .lede { color: var(--dim); line-height: 1.7; margin: 16px 0 0; font-size: 13px; max-width: 60ch; }
+  nav { margin-top: 16px; display: flex; gap: 16px; flex-wrap: wrap; }
+  nav a { color: var(--ink); text-decoration: none; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; border-bottom: 1px dotted var(--dim); padding-bottom: 2px; }
+  nav a:hover { color: var(--accent); border-color: var(--accent); }
+  section { margin-bottom: 32px; }
+  h2 { font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent); margin: 0 0 14px; font-weight: 400; }
+  h3 { font-size: 13px; color: var(--ink); margin: 20px 0 10px; font-weight: 400; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); margin-bottom: 8px; }
+  td, th { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--line); font-size: 13px; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  th { color: var(--dim); font-weight: 400; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; }
+  td:first-child { color: var(--dim); width: 42%; }
+  td b, td.v { color: var(--accent); }
+  td.good { color: var(--good); }
+  .note { color: var(--dim); font-size: 12px; line-height: 1.7; margin: 10px 0; }
+  .callout { background: var(--panel); border-left: 2px solid var(--accent); padding: 14px 18px; margin: 14px 0; font-size: 13px; line-height: 1.7; }
+  .callout b { color: var(--accent); font-weight: 400; }
+  .big { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
+  @media (max-width: 600px) { .big { grid-template-columns: 1fr; } h1 { font-size: 26px; } td:first-child { width: 50%; } }
+  .big > div { background: var(--panel); padding: 18px; }
+  .big .k { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; }
+  .big .v { font-size: 24px; color: var(--accent); }
+  .big .sub { font-size: 11px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
+  footer { margin-top: 40px; padding-top: 20px; border-top: 1px dashed #2a2a2e; color: var(--dim); font-size: 11px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">airgap // qr transfer · spec sheet</div>
+    <h1>Move files between offline devices<br/>with <b>just a camera</b>.</h1>
+    <p class="lede">Fountain-coded file transfer over a stream of QR codes. No network, no cable, no Bluetooth. Missed frames don't matter — the receiver finishes whenever it has enough.</p>
+    <nav>
+      <a href="/">← home</a>
+      <a href="/send">send</a>
+      <a href="/receive">receive</a>
+    </nav>
+  </header>
+
+  <section>
+    <h2>At a glance</h2>
+    <div class="big">
+      <div>
+        <div class="k">Frame-loss tolerance</div>
+        <div class="v">50%+</div>
+        <div class="sub">No required frames. Missed QRs are harmless.</div>
+      </div>
+      <div>
+        <div class="k">Effective speed (text)</div>
+        <div class="v">~14 KiB/s</div>
+        <div class="sub">After gzip + fountain overhead.</div>
+      </div>
+      <div>
+        <div class="k">Comfortable file size</div>
+        <div class="v">under 1 MB</div>
+        <div class="sub">Workable up to ~5 MB.</div>
+      </div>
+      <div>
+        <div class="k">Payload per QR</div>
+        <div class="v">400 B</div>
+        <div class="sub">~540 base64 chars on the wire.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Transfer protocol</h2>
+    <table>
+      <tr><td>Coding scheme</td><td>LT fountain code (Luby, 2002)</td></tr>
+      <tr><td>Frame-loss tolerance</td><td>50%+ — decoder finishes on any sufficient subset</td></tr>
+      <tr><td>Decode overhead</td><td>~1.10–1.17× the number of source blocks</td></tr>
+      <tr><td>PRNG</td><td>mulberry32, seeded per symbol</td></tr>
+      <tr><td>Degree distribution</td><td>Ideal-soliton-ish, 6% degree-1 spike</td></tr>
+      <tr><td>Integrity check</td><td>FNV-1a 32-bit hash in the header</td></tr>
+      <tr><td>Endpoint</td><td>Sender emits indefinitely; receiver self-stops when decoded</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Encoding pipeline</h2>
+    <table>
+      <tr><td>Compression</td><td>gzip level 9 (pako)</td></tr>
+      <tr><td>Source block size</td><td>400 raw bytes</td></tr>
+      <tr><td>Framing</td><td>1-byte type + 4-byte seed + payload</td></tr>
+      <tr><td>Header frame</td><td>type + k (u32) + chunkSize (u16) + hash (u32) + name</td></tr>
+      <tr><td>Header cadence</td><td>Every 15th QR</td></tr>
+      <tr><td>Wire encoding</td><td>base64 — ASCII, survives the scanner's UTF-8 decode</td></tr>
+      <tr><td>Characters per QR</td><td>~540</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>QR layer</h2>
+    <table>
+      <tr><td>QR generator</td><td>qrcode-generator 1.4.4</td></tr>
+      <tr><td>QR scanner</td><td>zbar-wasm 0.11.0</td></tr>
+      <tr><td>QR mode</td><td>Byte</td></tr>
+      <tr><td>Error correction</td><td>Level M (~15% recovery)</td></tr>
+      <tr><td>QR version</td><td>Auto — smallest that fits</td></tr>
+      <tr><td>Frame rate</td><td>80 ms per frame = 12.5 QR/s</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Throughput</h2>
+    <table>
+      <tr><th>Source type</th><th>gzip ratio</th><th>Effective speed</th></tr>
+      <tr><td>Already compressed (jpg, mp4, zip)</td><td>~1×</td><td class="v">~4.9 KiB/s</td></tr>
+      <tr><td>Office documents (docx, pdf)</td><td>~2×</td><td class="v">~9.8 KiB/s</td></tr>
+      <tr><td>Text / source code</td><td>~3×</td><td class="v">~14 KiB/s</td></tr>
+      <tr><td>Highly redundant text</td><td>~5×</td><td class="v">~24 KiB/s</td></tr>
+    </table>
+    <p class="note">Raw compressed-data throughput after fountain overhead: ~4.2 KiB/s.</p>
+  </section>
+
+  <section>
+    <h2>Maximum file size</h2>
+    <p class="note">There are two separate ceilings: what the device can hold, and what your patience allows.</p>
+
+    <h3>Technical ceiling — device memory</h3>
+    <p class="note">The receiver reconstructs the whole file in RAM several times. No hard cap exists in the code; the chunk-count field alone allows 4.3 billion blocks.</p>
+    <table>
+      <tr><th>Device</th><th>Text file (3× gzip)</th><th>Already-compressed</th></tr>
+      <tr><td>iPhone (Safari)</td><td class="v">~480 MB</td><td>~267 MB</td></tr>
+      <tr><td>Android (Chrome)</td><td class="v">~300 MB</td><td>~167 MB</td></tr>
+      <tr><td>Desktop browser</td><td class="v">~1.2 GB</td><td>~667 MB</td></tr>
+    </table>
+
+    <h3>Practical ceiling — time &amp; reliability</h3>
+    <table>
+      <tr><th>File (text)</th><th>Transfer time</th></tr>
+      <tr><td>1 MB</td><td class="good">~1 min</td></tr>
+      <tr><td>5 MB</td><td class="good">~6 min</td></tr>
+      <tr><td>10 MB</td><td>~13 min</td></tr>
+      <tr><td>25 MB</td><td>~32 min</td></tr>
+      <tr><td>50 MB</td><td>~1.1 h</td></tr>
+      <tr><td>100 MB</td><td>~2.1 h</td></tr>
+    </table>
+
+    <div class="callout">
+      <b>Recommendation:</b> keep files under ~5 MB. The tool can technically move hundreds of MB, but transfer time and the need to hold the camera steady make large files impractical.
+    </div>
+  </section>
+
+  <section>
+    <h2>Practical operation</h2>
+    <table>
+      <tr><td>Camera distance</td><td>20–40 cm from the sender's screen</td></tr>
+      <tr><td>Best conditions</td><td>High screen brightness, steady devices, low glare</td></tr>
+      <tr><td>Sender screen</td><td>Maximise brightness; a stand helps</td></tr>
+      <tr><td>Comfortable file size</td><td><b>under 1 MB</b></td></tr>
+      <tr><td>Workable file size</td><td>1–5 MB</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Reliability test results</h2>
+    <p class="note">Full pipeline — base64 encoding + UTF-8 channel + trailing newline + simulated loss. 80 source blocks of 400 bytes.</p>
+    <table>
+      <tr><th>Frame loss</th><th>Emitted</th><th>Received</th><th>Decoded</th><th>Byte-exact</th></tr>
+      <tr><td>0%</td><td>107</td><td>107</td><td class="good">yes</td><td class="good">yes</td></tr>
+      <tr><td>10%</td><td>116</td><td>102</td><td class="good">yes</td><td class="good">yes</td></tr>
+      <tr><td>30%</td><td>156</td><td>98</td><td class="good">yes</td><td class="good">yes</td></tr>
+      <tr><td>50%</td><td>205</td><td>96</td><td class="good">yes</td><td class="good">yes</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Site &amp; deployment</h2>
+    <table>
+      <tr><td>Pages</td><td>/ (landing), /send, /receive</td></tr>
+      <tr><td>Hosting</td><td>Netlify static site (drag-and-drop)</td></tr>
+      <tr><td>HTTPS</td><td>Automatic — required for camera access</td></tr>
+      <tr><td>Dependencies</td><td>pako, qrcode-generator, zbar-wasm (CDN)</td></tr>
+      <tr><td>Offline use</td><td>Works once loaded</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Known limitations</h2>
+    <table>
+      <tr><td>No encryption</td><td>Anyone who sees the screen can capture the data</td></tr>
+      <tr><td>No two-way ACK</td><td>Sender can't tell what the receiver has; it just keeps emitting</td></tr>
+      <tr><td>Memory-bound</td><td>Whole file reconstructed in RAM — large files strain mobile devices</td></tr>
+      <tr><td>Hash not enforced</td><td>Integrity hash is carried but not verified on completion</td></tr>
+      <tr><td>Single-camera</td><td>Receiver needs a rear camera; sender needs a bright screen</td></tr>
+    </table>
+  </section>
+
+  <footer>
+    LT fountain code (Luby, 2002) · gzip via pako · QR via qrcode-generator · scanning via zbar-wasm.
+  </footer>
+
+</div>
+</body>
+</html>

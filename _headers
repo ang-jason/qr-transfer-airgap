@@ -1,0 +1,17 @@
+# Global security headers
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(self), microphone=(), geolocation=()
+
+# Camera page needs explicit camera permission policy
+/receive
+  Permissions-Policy: camera=(self), microphone=(), geolocation=()
+
+/receive.html
+  Permissions-Policy: camera=(self), microphone=(), geolocation=()
+
+# Cache static HTML modestly so updates roll out quickly
+/*.html
+  Cache-Control: public, max-age=300, must-revalidate

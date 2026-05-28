@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<title>Transmitter · QR File Transfer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c-frost:   #F2F7F8;
+    --c-glacier: #D6EAF0;
+    --c-mint:    #BFE6DC;
+    --c-lagoon:  #4DA6B8;
+    --c-teal:    #2C7A8C;
+    --c-slate:   #25404A;
+    --c-red:     #C0392B;
+    --bg-surface:     var(--c-frost);
+    --bg-card:        #FFFFFF;
+    --action-primary: var(--c-teal);
+    --text-primary:   var(--c-slate);
+    --text-secondary: var(--c-teal);
+    --text-on-primary:#FFFFFF;
+    --border-soft:    #D6EAF0;
+    --radius:  12px;
+    --radius-sm: 8px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* Nav */
+  .nav {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-soft);
+    padding: 10px 20px;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .nav-btn {
+    background: transparent; color: var(--text-secondary);
+    border: 1.5px solid var(--c-lagoon); border-radius: var(--radius-sm);
+    padding: 8px 16px; font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500; cursor: pointer;
+    transition: background 0.15s; text-decoration: none; display: inline-block;
+  }
+  .nav-btn:hover { background: var(--c-glacier); }
+  .nav-btn.active { background: var(--action-primary); color: var(--text-on-primary); border-color: var(--action-primary); }
+
+  /* Layout */
+  .page { max-width: 600px; margin: 0 auto; padding: 24px 20px 48px; }
+
+  /* Buttons */
+  .btn-stop {
+    width: 100%; background: var(--action-primary); color: var(--text-on-primary);
+    border: none; border-radius: var(--radius-sm); padding: 13px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s; margin-bottom: 16px;
+  }
+  .btn-stop:hover { opacity: 0.88; }
+  .btn-stop:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-start {
+    width: 100%; background: var(--action-primary); color: var(--text-on-primary);
+    border: none; border-radius: var(--radius-sm); padding: 13px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s; margin-bottom: 16px;
+  }
+  .btn-start:hover { opacity: 0.88; }
+  .btn-start:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* File picker */
+  .file-picker {
+    display: block;
+    width: 100%;
+    background: var(--bg-card);
+    border: 1.5px dashed var(--c-lagoon);
+    border-radius: var(--radius);
+    padding: 24px 20px;
+    text-align: center;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: background 0.15s;
+  }
+  .file-picker:hover { background: var(--c-glacier); }
+  .file-picker input { display: none; }
+  .file-picker .icon { font-size: 36px; margin-bottom: 8px; display: block; }
+  .file-picker p { font-size: 14px; color: var(--text-primary); font-weight: 500; margin: 0 0 4px; }
+  .file-picker small { font-size: 12px; color: var(--c-lagoon); }
+
+  /* QR area */
+  .qr-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .qr-card #qrcode { display: flex; justify-content: center; align-items: center; min-height: 120px; }
+  .qr-card #qrcode img { display: block; image-rendering: pixelated; }
+  .qr-hint { font-size: 13px; color: var(--text-secondary); margin-top: 12px; }
+
+  /* File info row */
+  .file-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .file-row .file-icon { font-size: 22px; flex-shrink: 0; }
+  .file-row .file-name { font-size: 14px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-row .file-meta { font-size: 12px; color: var(--c-lagoon); white-space: nowrap; font-family: 'DM Mono', monospace; }
+
+  /* Status + error */
+  .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .status-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .status-val { font-size: 13px; font-family: 'DM Mono', monospace; color: var(--text-primary); }
+  .status-val.err { color: var(--c-red); }
+  .err-msg { font-size: 13px; color: var(--c-red); margin-bottom: 10px; min-height: 18px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-btn">🏠 Home</a>
+  <a href="/send" class="nav-btn active">🛰️ Transmitter</a>
+  <a href="/receive" class="nav-btn">🪐 Receiver</a>
+</nav>
+
+<main class="page">
+
+  <button id="stop_btn" class="btn-stop" style="display:none;" disabled>⏹️ Stop transmission</button>
+
+  <div id="idle_area">
+    <label class="file-picker">
+      <input id="file_input" type="file" />
+      <span class="icon">📂</span>
+      <p>Choose a file to send</p>
+      <small>No size limit — best under 5 MB</small>
+    </label>
+    <button id="start_btn" class="btn-start" disabled>Start transmission 🛰️</button>
+  </div>
+
+  <div id="err" class="err-msg"></div>
+
+  <div class="qr-card" id="qr_card" style="display:none;">
+    <div id="qrcode"></div>
+    <p class="qr-hint">📸 Point the other device's camera at this code</p>
+  </div>
+
+  <div class="file-row" id="file_row" style="display:none;">
+    <span class="file-icon">📄</span>
+    <span class="file-name" id="filename">—</span>
+    <span class="file-meta" id="emitted">0 / —</span>
+  </div>
+
+  <div class="status-row">
+    <span class="status-label">Status</span>
+    <span class="status-val" id="status">idle</span>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
+<script>
+'use strict';
+
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function() {
+    t = (t + 0x6D2B79F5) >>> 0;
+    let r = t;
+    r = Math.imul(r ^ (r >>> 15), r | 1);
+    r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function pickDegree(rand, k) {
+  const r = rand();
+  if (r < 0.06) return 1;
+  const u = rand();
+  let d = Math.ceil(1 / Math.max(u, 1e-9));
+  if (d < 1) d = 1;
+  if (d > k) d = k;
+  return d;
+}
+function pickIndices(seed, k, d) {
+  const rand = mulberry32(seed ^ 0x9E3779B1);
+  const chosen = new Set();
+  while (chosen.size < d) chosen.add(Math.floor(rand() * k));
+  return [...chosen];
+}
+function xorInto(dst, src) { for (let i = 0; i < dst.length; i++) dst[i] ^= src[i]; }
+
+// 400 raw bytes/frame. After framing (+5) and base64 (+33%) ≈ 540 ASCII chars.
+// Fits comfortably in a mid-size QR that phone cameras scan reliably.
+const CHUNK_SIZE = 400;
+const QR_VERSION = 0;      // auto-pick
+const QR_EC = 'M';
+const FRAME_DELAY_MS = 80;
+const HEADER_INTERVAL = 15;
+
+let chunks = [], k = 0, filename = '', fileHash = 0;
+let running = false, emitted = 0, seedCounter = 1;
+let estimatedTotal = 0;
+let qrSize = 320;
+let compressedLen = 0;
+
+const $ = (id) => document.getElementById(id);
+const setStatus = (s, isErr) => { $('status').textContent = s; $('status').className = 'status-val' + (isErr ? ' err' : ''); };
+const setError = (m) => { $('err').textContent = m || ''; };
+
+function fnv1a(bytes) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < bytes.length; i++) { h ^= bytes[i]; h = Math.imul(h, 0x01000193) >>> 0; }
+  return h >>> 0;
+}
+
+async function prepareFile(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const compressed = pako.gzip(buf, { level: 9 });
+  fileHash = fnv1a(compressed);
+  compressedLen = compressed.length;
+  filename = file.name;
+  k = Math.ceil(compressed.length / CHUNK_SIZE);
+  chunks = [];
+  for (let i = 0; i < k; i++) {
+    const c = new Uint8Array(CHUNK_SIZE);
+    c.set(compressed.subarray(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE));
+    chunks.push(c);
+  }
+  const overhead = Math.max(1.15, 1.05 + 14 / k);
+  const dataNeeded = Math.ceil(k * overhead);
+  estimatedTotal = Math.ceil(dataNeeded * HEADER_INTERVAL / (HEADER_INTERVAL - 1));
+  $('emitted').textContent = '0 / ~' + estimatedTotal;
+  emitted = 0;
+}
+
+function buildHeader() {
+  const nameBytes = new TextEncoder().encode(filename);
+  const buf = new Uint8Array(1 + 4 + 2 + 4 + 1 + nameBytes.length);
+  const dv = new DataView(buf.buffer);
+  let o = 0;
+  buf[o++] = 0x48;
+  dv.setUint32(o, k, false); o += 4;
+  dv.setUint16(o, CHUNK_SIZE, false); o += 2;
+  dv.setUint32(o, fileHash, false); o += 4;
+  buf[o++] = nameBytes.length;
+  buf.set(nameBytes, o);
+  return buf;
+}
+
+function buildSymbol(seed, xorBlock) {
+  const buf = new Uint8Array(1 + 4 + xorBlock.length);
+  buf[0] = 0x44;
+  new DataView(buf.buffer).setUint32(1, seed, false);
+  buf.set(xorBlock, 5);
+  return buf;
+}
+
+function bytesToBase64(bytes) {
+  let s = '';
+  const C = 4096;
+  for (let i = 0; i < bytes.length; i += C) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + C));
+  }
+  return btoa(s);
+}
+
+function computeQrSize() {
+  qrSize = Math.min(window.innerWidth - 80, window.innerHeight - 280, 520);
+  if (qrSize < 240) qrSize = 240;
+}
+
+function renderQR(bytes) {
+  const qr = qrcode(QR_VERSION, QR_EC);
+  qr.addData(bytesToBase64(bytes), 'Byte');
+  qr.make();
+  const mods = qr.getModuleCount();
+  const cellSize = Math.max(2, Math.floor(qrSize / (mods + 8)));
+  $('qrcode').innerHTML = qr.createImgTag(cellSize, 16);
+}
+
+function makeEncodedSymbol() {
+  const seed = seedCounter++;
+  const rand = mulberry32(seed);
+  rand(); rand();
+  const d = pickDegree(rand, k);
+  const indices = pickIndices(seed, k, d);
+  const out = new Uint8Array(CHUNK_SIZE);
+  for (const idx of indices) xorInto(out, chunks[idx]);
+  return buildSymbol(seed, out);
+}
+
+async function loop() {
+  setError('');
+  while (running) {
+    let payload;
+    try {
+      payload = (emitted % HEADER_INTERVAL === 0) ? buildHeader() : makeEncodedSymbol();
+      renderQR(payload);
+    } catch (e) {
+      console.error('frame error', e);
+      setError('Render error: ' + e.message);
+      setStatus('error', true);
+      running = false;
+      $('start_btn').disabled = false;
+      $('stop_btn').disabled = true;
+      return;
+    }
+    emitted++;
+    $('emitted').textContent = emitted + ' / ~' + estimatedTotal;
+    setStatus((emitted - 1) % HEADER_INTERVAL === 0 ? 'header sent' : 'streaming');
+    await new Promise(r => setTimeout(r, FRAME_DELAY_MS));
+  }
+}
+
+$('file_input').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  setError('');
+  $('filename').textContent = f.name;
+  $('file_row').style.display = 'flex';
+  setStatus('compressing…');
+  try {
+    await prepareFile(f);
+    setStatus('ready');
+    $('start_btn').disabled = false;
+  } catch (e) {
+    setError('Compression failed: ' + e.message);
+    setStatus('error', true);
+  }
+});
+
+$('start_btn').addEventListener('click', () => {
+  if (running || !chunks.length) return;
+  running = true;
+  emitted = 0; seedCounter = 1;
+  $('start_btn').disabled = true;
+  $('idle_area').style.display = 'none';
+  $('stop_btn').style.display = 'block';
+  $('stop_btn').disabled = false;
+  $('qr_card').style.display = 'block';
+  $('file_row').style.display = 'flex';
+  computeQrSize();
+  loop();
+});
+
+$('stop_btn').addEventListener('click', () => {
+  running = false;
+  setStatus('stopped');
+  $('start_btn').disabled = false;
+  $('idle_area').style.display = 'block';
+  $('stop_btn').style.display = 'none';
+  $('stop_btn').disabled = true;
+});
+
+window.addEventListener('load', () => {
+  computeQrSize();
+  if (typeof qrcode !== 'function') {
+    setError('QR library failed to load. Check internet, then reload.');
+    return;
+  }
+  try {
+    const t = qrcode(0, 'M');
+    t.addData('hello', 'Byte');
+    t.make();
+  } catch (e) {
+    setError('QR library self-test failed: ' + e.message);
+  }
+});
+window.addEventListener('resize', computeQrSize);
+</script>
+</body>
+</html>

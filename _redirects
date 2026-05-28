@@ -1,0 +1,11 @@
+# Pretty URLs — strip .html
+/send       /send.html       200
+/receive    /receive.html    200
+
+# Catch trailing slashes
+/send/      /send.html       200
+/receive/   /receive.html    200
+
+# Legacy paths (in case anyone links to the .html versions)
+/send.html       /send       301
+/receive.html    /receive    301

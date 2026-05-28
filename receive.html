@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<title>Receiver · QR File Transfer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c-frost:   #F2F7F8;
+    --c-glacier: #D6EAF0;
+    --c-mint:    #BFE6DC;
+    --c-lagoon:  #4DA6B8;
+    --c-teal:    #2C7A8C;
+    --c-slate:   #25404A;
+    --c-green:   #1A7A4A;
+    --c-red:     #C0392B;
+    --bg-surface:     var(--c-frost);
+    --bg-card:        #FFFFFF;
+    --action-primary: var(--c-teal);
+    --text-primary:   var(--c-slate);
+    --text-secondary: var(--c-teal);
+    --text-on-primary:#FFFFFF;
+    --border-soft:    #D6EAF0;
+    --radius:  12px;
+    --radius-sm: 8px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* Nav */
+  .nav {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-soft);
+    padding: 10px 20px;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .nav-btn {
+    background: transparent; color: var(--text-secondary);
+    border: 1.5px solid var(--c-lagoon); border-radius: var(--radius-sm);
+    padding: 8px 16px; font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500; cursor: pointer;
+    transition: background 0.15s; text-decoration: none; display: inline-block;
+  }
+  .nav-btn:hover { background: var(--c-glacier); }
+  .nav-btn.active { background: var(--action-primary); color: var(--text-on-primary); border-color: var(--action-primary); }
+
+  /* Layout */
+  .page { max-width: 600px; margin: 0 auto; padding: 24px 20px 48px; }
+
+  /* Buttons */
+  .btn-main {
+    width: 100%; background: var(--action-primary); color: var(--text-on-primary);
+    border: none; border-radius: var(--radius-sm); padding: 13px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s; margin-bottom: 16px;
+  }
+  .btn-main:hover { opacity: 0.88; }
+  .btn-main:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* Camera */
+  .camera-card {
+    position: relative;
+    background: #1a2a30;
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 14px;
+    aspect-ratio: 4/3;
+    max-height: 360px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .camera-card video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .camera-placeholder { font-size: 48px; opacity: 0.3; }
+  .camera-guide {
+    position: absolute;
+    width: 140px; height: 140px;
+    border: 2px solid rgba(255,255,255,0.75);
+    border-radius: 10px;
+    pointer-events: none;
+  }
+
+  /* Progress card */
+  .progress-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .progress-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .progress-filename {
+    font-size: 14px; font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 0 1 auto; min-width: 0;
+  }
+  .progress-counts {
+    font-size: 12px; color: var(--c-lagoon);
+    flex: 1; text-align: center; white-space: nowrap;
+    font-family: 'DM Mono', monospace;
+  }
+  .progress-pct {
+    font-size: 22px; font-weight: 700; color: var(--c-teal);
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .progress-pct.done { color: var(--c-green); }
+  .progress-bar-track {
+    height: 8px; background: var(--c-glacier);
+    border-radius: 4px; overflow: hidden; margin-bottom: 10px;
+  }
+  .progress-bar-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--c-teal), var(--c-lagoon));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+  .progress-bar-fill.done { background: var(--c-green); }
+  .progress-hint { font-size: 12px; color: var(--text-secondary); }
+
+  /* Details toggle */
+  .details-toggle {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 6px;
+  }
+  .details-toggle span { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+  .details-toggle small { font-size: 12px; color: var(--c-lagoon); }
+  .details-body {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    padding: 10px 14px;
+    display: none;
+  }
+  .details-body.open { display: block; }
+  .debug-log {
+    font-size: 11px; color: var(--c-slate);
+    font-family: 'DM Mono', monospace;
+    line-height: 1.7; white-space: pre-wrap;
+    max-height: 120px; overflow-y: auto;
+  }
+
+  /* Status + error */
+  .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; margin-top: 4px; }
+  .status-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .status-val { font-size: 13px; font-family: 'DM Mono', monospace; color: var(--text-primary); }
+  .status-val.err { color: var(--c-red); }
+  .status-val.good { color: var(--c-green); }
+  .err-msg { font-size: 13px; color: var(--c-red); margin-bottom: 10px; min-height: 18px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-btn">🏠 Home</a>
+  <a href="/send" class="nav-btn">🛰️ Transmitter</a>
+  <a href="/receive" class="nav-btn active">🪐 Receiver</a>
+</nav>
+
+<main class="page">
+
+  <button id="stop_btn" class="btn-main" style="display:none;" disabled>⏹️ Stop receiving</button>
+  <button id="start_btn" class="btn-main">Start receiver 🪐</button>
+
+  <div id="err" class="err-msg"></div>
+
+  <div class="camera-card">
+    <video id="videoElement" muted autoplay playsinline></video>
+    <div class="camera-guide"></div>
+    <div id="cam_placeholder" class="camera-placeholder">📷</div>
+  </div>
+
+  <div class="progress-card">
+    <div class="progress-row">
+      <span class="progress-filename" id="filename">waiting for signal…</span>
+      <span class="progress-counts" id="scans">— scans · — / — blocks</span>
+      <span class="progress-pct" id="pct">0%</span>
+    </div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="bar"></div>
+    </div>
+    <p class="progress-hint" id="progress_hint">🎯 Hold steady — it finishes on its own.</p>
+  </div>
+
+  <div class="details-toggle" id="details_toggle">
+    <span>🔍 Details</span>
+    <small>debug log ›</small>
+  </div>
+  <div class="details-body" id="details_body">
+    <div class="debug-log" id="debug">—</div>
+  </div>
+
+  <div class="status-row">
+    <span class="status-label">Status</span>
+    <span class="status-val" id="status">idle</span>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.11.0/dist/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
+<script>
+'use strict';
+
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function() {
+    t = (t + 0x6D2B79F5) >>> 0;
+    let r = t;
+    r = Math.imul(r ^ (r >>> 15), r | 1);
+    r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function pickDegree(rand, k) {
+  const r = rand();
+  if (r < 0.06) return 1;
+  const u = rand();
+  let d = Math.ceil(1 / Math.max(u, 1e-9));
+  if (d < 1) d = 1;
+  if (d > k) d = k;
+  return d;
+}
+function pickIndices(seed, k, d) {
+  const rand = mulberry32(seed ^ 0x9E3779B1);
+  const chosen = new Set();
+  while (chosen.size < d) chosen.add(Math.floor(rand() * k));
+  return [...chosen];
+}
+function xorInto(dst, src) { for (let i = 0; i < dst.length; i++) dst[i] ^= src[i]; }
+
+class LTDecoder {
+  constructor(k, chunkSize) {
+    this.k = k;
+    this.chunkSize = chunkSize;
+    this.recovered = new Array(k).fill(null);
+    this.solvedCount = 0;
+    this.symbols = [];
+    this.seenSeeds = new Set();
+  }
+  addSymbol(seed, data) {
+    if (this.seenSeeds.has(seed)) return 'duplicate';
+    this.seenSeeds.add(seed);
+    const rand = mulberry32(seed);
+    rand(); rand();
+    const d = pickDegree(rand, this.k);
+    const neighbors = new Set(pickIndices(seed, this.k, d));
+    const payload = new Uint8Array(data);
+    for (const idx of [...neighbors]) {
+      if (this.recovered[idx]) { xorInto(payload, this.recovered[idx]); neighbors.delete(idx); }
+    }
+    if (neighbors.size === 0) return 'redundant';
+    if (neighbors.size === 1) { this.recover([...neighbors][0], payload); return 'solved'; }
+    this.symbols.push({ data: payload, neighbors });
+    return 'queued';
+  }
+  recover(idx, blockData) {
+    if (this.recovered[idx]) return;
+    this.recovered[idx] = blockData;
+    this.solvedCount++;
+    const queue = [idx];
+    while (queue.length) {
+      const just = queue.shift();
+      for (let s = this.symbols.length - 1; s >= 0; s--) {
+        const sym = this.symbols[s];
+        if (sym.neighbors.has(just)) {
+          xorInto(sym.data, this.recovered[just]);
+          sym.neighbors.delete(just);
+          if (sym.neighbors.size === 1) {
+            const ni = [...sym.neighbors][0];
+            if (!this.recovered[ni]) {
+              this.recovered[ni] = sym.data;
+              this.solvedCount++;
+              queue.push(ni);
+            }
+            this.symbols.splice(s, 1);
+          } else if (sym.neighbors.size === 0) {
+            this.symbols.splice(s, 1);
+          }
+        }
+      }
+    }
+  }
+  isDone() { return this.solvedCount >= this.k; }
+  assemble() {
+    const out = new Uint8Array(this.k * this.chunkSize);
+    for (let i = 0; i < this.k; i++) out.set(this.recovered[i], i * this.chunkSize);
+    return out;
+  }
+}
+
+const $ = (id) => document.getElementById(id);
+const setStatus = (s, cls) => {
+  $('status').textContent = s;
+  $('status').className = 'status-val' + (cls ? ' ' + cls : '');
+};
+const setError = (m) => { $('err').textContent = m || ''; };
+
+let debugLines = [];
+function debug(line) {
+  debugLines.push(line);
+  if (debugLines.length > 8) debugLines.shift();
+  $('debug').textContent = debugLines.join('\n');
+}
+
+let header = null;
+let decoder = null;
+let scanCount = 0;
+let uniqueCount = 0;
+let usefulCount = 0;
+let lastSeenSeed = null;
+let isReceiving = false;
+let videoElement, canvas, context;
+
+function parseHeader(bytes) {
+  if (bytes.length < 12) return null;
+  if (bytes[0] !== 0x48) return null;
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const k = dv.getUint32(1, false);
+  const chunkSize = dv.getUint16(5, false);
+  const hash = dv.getUint32(7, false);
+  const nameLen = bytes[11];
+  if (12 + nameLen > bytes.length) return null;
+  if (k < 1 || k > 100000) return null;
+  if (chunkSize < 32 || chunkSize > 4096) return null;
+  const name = new TextDecoder().decode(bytes.subarray(12, 12 + nameLen));
+  return { k, chunkSize, hash, name };
+}
+
+function parseSymbol(bytes, expectedSize) {
+  if (bytes.length !== 5 + expectedSize) return null;
+  if (bytes[0] !== 0x44) return null;
+  const seed = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(1, false);
+  return { seed, data: bytes.subarray(5) };
+}
+
+function frameToBytes(s) {
+  const clean = s.replace(/[^A-Za-z0-9+/=]/g, '');
+  let bin;
+  try { bin = atob(clean); }
+  catch (e) { return null; }
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i) & 0xff;
+  return out;
+}
+
+function download(bytes, name) {
+  const blob = new Blob([bytes]);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function updateUI() {
+  $('rawscans') && ($('rawscans').textContent = scanCount);
+  if (decoder) {
+    const overhead = Math.max(1.15, 1.05 + 14 / decoder.k);
+    const dataNeeded = Math.ceil(decoder.k * overhead);
+    $('scans').textContent = `${uniqueCount} / ~${dataNeeded} scans · ${decoder.solvedCount}/${decoder.k} blocks`;
+    const p = Math.round((decoder.solvedCount / decoder.k) * 100);
+    $('pct').textContent = p + '%';
+    $('bar').style.width = p + '%';
+    if (decoder.isDone()) {
+      $('pct').classList.add('done');
+      $('bar').classList.add('done');
+    }
+  }
+}
+
+async function scanLoop() {
+  while (isReceiving) {
+    try {
+      await new Promise(r => setTimeout(r, 40));
+      if (!canvas.width) continue;
+      context.drawImage(videoElement, 0, 0);
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const symbols = await zbarWasm.scanImageData(imageData);
+      if (!symbols || !symbols.length) continue;
+
+      for (const sym of symbols) {
+        const text = sym.decode();
+        if (!text || text.length < 1) continue;
+        const bytes = frameToBytes(text);
+        if (!bytes || bytes.length < 1) { debug('base64 decode failed'); continue; }
+        scanCount++;
+
+        if (bytes[0] === 0x48) {
+          const h = parseHeader(bytes);
+          if (!h) { debug('bad header bytes (len=' + bytes.length + ')'); continue; }
+          if (!header) {
+            header = h;
+            decoder = new LTDecoder(h.k, h.chunkSize);
+            $('filename').textContent = h.name;
+            $('progress_hint').textContent = '🎯 Hold steady — it finishes on its own.';
+            setStatus('decoding');
+            debug('header: k=' + h.k + ', chunk=' + h.chunkSize + ', name=' + h.name);
+          }
+        } else if (bytes[0] === 0x44) {
+          if (!decoder) { debug('data symbol before header — waiting'); continue; }
+          const s = parseSymbol(bytes, decoder.chunkSize);
+          if (!s) { debug('bad data symbol (len=' + bytes.length + ', expected=' + (5 + decoder.chunkSize) + ')'); continue; }
+          lastSeenSeed = s.seed;
+          const before = decoder.solvedCount;
+          const result = decoder.addSymbol(s.seed, s.data);
+          if (result !== 'duplicate') uniqueCount++;
+          if (result === 'solved' || result === 'queued') usefulCount++;
+          const delta = decoder.solvedCount - before;
+          if (delta > 0) debug('seed=' + s.seed + ' → +' + delta + ' solved (' + decoder.solvedCount + '/' + decoder.k + ')');
+          if (decoder.isDone()) { finishUp(); return; }
+        } else {
+          debug('unknown frame type 0x' + bytes[0].toString(16));
+        }
+      }
+      updateUI();
+    } catch (e) {
+      console.error('scan error', e);
+      debug('scan error: ' + e.message);
+    }
+  }
+}
+
+function finishUp() {
+  setStatus('reconstructing', 'good');
+  updateUI();
+  const compressed = decoder.assemble();
+  try {
+    const inflated = pako.inflate(compressed);
+    download(inflated, header.name);
+    setStatus('done · file downloaded ✅', 'good');
+    $('progress_hint').textContent = '✅ File downloaded successfully!';
+    debug('decoded ok, ' + inflated.length + ' bytes');
+  } catch (e) {
+    try {
+      let end = compressed.length;
+      while (end > 18 && compressed[end - 1] === 0) end--;
+      const inflated = pako.inflate(compressed.subarray(0, end));
+      download(inflated, header.name);
+      setStatus('done · file downloaded ✅', 'good');
+      $('progress_hint').textContent = '✅ File downloaded successfully!';
+      debug('decoded ok (trimmed), ' + inflated.length + ' bytes');
+    } catch (e2) {
+      setStatus('error', 'err');
+      setError('Decompression failed: ' + e2.message);
+      debug('inflate failed: ' + e2.message);
+    }
+  }
+  isReceiving = false;
+  $('start_btn').style.display = 'block';
+  $('start_btn').disabled = false;
+  $('stop_btn').style.display = 'none';
+  $('stop_btn').disabled = true;
+}
+
+// Details toggle
+$('details_toggle').addEventListener('click', () => {
+  $('details_body').classList.toggle('open');
+  $('details_toggle').querySelector('small').textContent =
+    $('details_body').classList.contains('open') ? 'debug log ↑' : 'debug log ›';
+});
+
+$('start_btn').addEventListener('click', async () => {
+  if (isReceiving) return;
+  header = null; decoder = null;
+  scanCount = 0; uniqueCount = 0; usefulCount = 0; lastSeenSeed = null;
+  debugLines = [];
+  $('debug').textContent = '—';
+  $('bar').style.width = '0%';
+  $('bar').classList.remove('done');
+  $('pct').classList.remove('done');
+  $('scans').textContent = '— scans · — / — blocks';
+  $('pct').textContent = '0%';
+  $('filename').textContent = 'waiting for signal…';
+  $('progress_hint').textContent = '🎯 Hold steady — it finishes on its own.';
+  setError('');
+  isReceiving = true;
+  setStatus('awaiting header');
+  $('start_btn').style.display = 'none';
+  $('start_btn').disabled = true;
+  $('stop_btn').style.display = 'block';
+  $('stop_btn').disabled = false;
+  scanLoop();
+});
+
+$('stop_btn').addEventListener('click', () => {
+  isReceiving = false;
+  setStatus('stopped');
+  $('start_btn').style.display = 'block';
+  $('start_btn').disabled = false;
+  $('stop_btn').style.display = 'none';
+  $('stop_btn').disabled = true;
+});
+
+window.addEventListener('load', async () => {
+  videoElement = $('videoElement');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setError('Camera API not supported in this browser.');
+    return;
+  }
+  if (typeof zbarWasm === 'undefined' || !zbarWasm.scanImageData) {
+    setError('Scanner library failed to load. Check internet and reload.');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    videoElement.srcObject = stream;
+    await new Promise(r => videoElement.onloadedmetadata = r);
+    await videoElement.play();
+    $('cam_placeholder').style.display = 'none';
+    canvas = document.createElement('canvas');
+    context = canvas.getContext('2d', { willReadFrequently: true });
+    canvas.width = videoElement.videoWidth;
+    canvas.height = videoElement.videoHeight;
+    setStatus('camera ready');
+    debug('camera ' + canvas.width + 'x' + canvas.height);
+  } catch (e) {
+    setError('Camera error: ' + e.message + '. Allow camera permission, then reload.');
+    setStatus('camera error', 'err');
+  }
+});
+</script>
+</body>
+</html>
